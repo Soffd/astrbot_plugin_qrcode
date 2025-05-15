@@ -7,5 +7,5 @@
 ![image](https://github.com/user-attachments/assets/1e77637b-8d57-4cea-b47f-91f72def6001)
 
 # 依赖库
-`qrcode`
+`qrcode`<br>
 `Pillow` 此依赖也许已经安装
