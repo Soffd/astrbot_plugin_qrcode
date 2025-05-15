@@ -69,7 +69,7 @@ class QRCodePlugin(Star):
         try:
             os.unlink(path)
         except PermissionError:
-            # 若首次删除失败，稍后重试
+            # 删除失败，执行重试
             await asyncio.sleep(2)
             try:
                 os.unlink(path)
