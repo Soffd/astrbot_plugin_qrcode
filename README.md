@@ -1,9 +1,5 @@
-# helloworld
+# 说明
+链接转换二维码的astrbot插件，发送图片自动删除缓存文件，不必手动删除
 
-AstrBot 插件模板
-
-A template plugin for AstrBot plugin feature
-
-# 支持
-
-[帮助文档](https://astrbot.app)
+# 指令使用说明
+-`qr`: 发送链接转换为可扫描的二维码，链接需包含https://或http://
