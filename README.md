@@ -5,3 +5,7 @@
 -`qr`: 发送链接转换为可扫描的二维码，链接需包含https://或http://<br>
 *示例*
 ![image](https://github.com/user-attachments/assets/1e77637b-8d57-4cea-b47f-91f72def6001)
+
+# 依赖库
+`qrcode`
+`Pillow` 此依赖也许已经安装
