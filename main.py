@@ -2,11 +2,14 @@ from astrbot.api.event import filter, AstrMessageEvent, MessageEventResult
 from astrbot.api.star import Context, Star, register
 from astrbot.api import logger
 from astrbot.api.all import *
+from pyzbar.pyzbar import decode
+from PIL import Image as PILImage
 import qrcode
 import re
 import io
 import asyncio
 import tempfile
+import time
 
 URL_PATTERN = re.compile(r'https?://\S+')
 
@@ -14,6 +17,9 @@ URL_PATTERN = re.compile(r'https?://\S+')
 class QRCodePlugin(Star):
     def __init__(self, context: Context):
         super().__init__(context)
+        self.temp_dir = os.path.join(tempfile.gettempdir(), "astrbot_qrcode")
+        os.makedirs(self.temp_dir, exist_ok=True)
+
 
     async def initialize(self):
         """插件初始化"""
@@ -69,7 +75,7 @@ class QRCodePlugin(Star):
         try:
             os.unlink(path)
         except PermissionError:
-            # 删除失败，执行重试
+            # 若首次删除失败，稍后重试
             await asyncio.sleep(2)
             try:
                 os.unlink(path)
@@ -79,4 +85,78 @@ class QRCodePlugin(Star):
     async def terminate(self):
         """插件销毁"""
 
-##再也不想看到 在调用插件 qrcode 的处理函数 qr_code_generator 时出现异常：[WinError 32] 另一个程序正在使用此文件，进程无法访问。: '阿巴阿巴阿巴.jpg'这个比玩意了。
+    @filter.command("qr_decode")
+    async def decode_qrcode(self, event: AstrMessageEvent):
+        """解析用户发送的二维码图片，使用方式：/qr_decode [图片]"""
+        # 检查消息中是否有图片
+        messages = event.get_messages()
+        image = next((msg for msg in messages if isinstance(msg, Image)), None)
+        if not image:
+            yield event.plain_result("⚠️ 请发送一张二维码图片！例如：/qr_decode [图片]")
+            return
+
+        try:
+            # 下载图片到临时目录
+            temp_path = await self.download_image(event, image.file)
+            if not temp_path:
+                yield event.plain_result("❌ 图片下载失败")
+                return
+
+            # 解析二维码
+            decoded_data = self._decode_qr_image(temp_path)
+            if not decoded_data:
+                yield event.plain_result("❌ 未检测到二维码或解析失败")
+                return
+
+            # 返回结果并清理文件
+            yield event.plain_result(f"✅ 解析结果：{decoded_data}")
+            await self.cleanup_file(temp_path)
+
+        except Exception as e:
+            logger.error(f"解析二维码失败: {str(e)}")
+            yield event.plain_result("❌ 解析过程中发生错误")
+
+    async def download_image(self, event: AstrMessageEvent, file_id: str) -> str:
+        """下载图片到临时目录（参考第一个插件的逻辑）"""
+        try:
+            image_obj = next((msg for msg in event.get_messages() if isinstance(msg, Image)), None)
+            if not image_obj:
+                return ""
+
+            # 获取图片本地缓存路径
+            file_path = await image_obj.convert_to_file_path()
+            if file_path and os.path.exists(file_path):
+                with open(file_path, "rb") as f:
+                    data = f.read()
+            else:
+                # 从协议端下载
+                client = event.bot
+                result = await client.api.call_action("get_image", file_id=file_id)
+                file_path = result.get("file")
+                if not file_path:
+                    return ""
+                with open(file_path, "rb") as f:
+                    data = f.read()
+
+            # 保存到临时目录
+            temp_path = os.path.join(self.temp_dir, f"qrcode_{int(time.time())}.jpg")
+            with open(temp_path, "wb") as f:
+                f.write(data)
+            return temp_path
+
+        except Exception as e:
+            logger.error(f"下载图片失败: {str(e)}")
+            return ""
+
+    def _decode_qr_image(self, image_path: str) -> str:
+        """解析二维码内容"""
+        try:
+            img = PILImage.open(image_path)
+            decoded_objects = decode(img)
+            if decoded_objects:
+                return decoded_objects[0].data.decode("utf-8")
+            return ""
+        except Exception as e:
+            logger.error(f"解码失败: {str(e)}")
+            return ""
+
