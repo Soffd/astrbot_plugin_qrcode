@@ -12,3 +12,6 @@
 `qrcode`<br>
 `pyzbar`<br>
 `Pillow` 此依赖也许已经安装
+
+# 关于Windows的一个提醒
+如果你使用win系统使用本插件，请确保已经安装pyzbar需要的额外依赖（实际上具体需要哪些，我至今也没有搞清楚），推荐使用<a href="https://dl.3dmgame.com/patch/89066.html">3DM游戏运行库合集离线安装包</a>安装推荐依赖，无脑，但确实有用。
